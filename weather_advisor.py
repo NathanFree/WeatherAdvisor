@@ -18,11 +18,14 @@ class WeatherAdvisor:
     def __init__(self, jacket_temperature: int, coat_temperature: int, temperature_type: TemperatureType):
         load_dotenv()
         self.OPENWEATHERMAP_API_KEY = os.getenv("OPENWEATHERMAP_API_KEY")
-        self.ZIP_CODE = os.getenv("ZIP_CODE")
+        self.LOCATION_ZIP_CODE = os.getenv("LOCATION_ZIP_CODE")
+        self.LOCATION_LATITUDE = os.getenv("LOCATION_LATITUDE")
+        self.LOCATION_LONGITUDE = os.getenv("LOCATION_LONGITUDE")
         self.jacket_temperature = jacket_temperature
         self.coat_temperature = coat_temperature
         self.temperature_type = temperature_type
-        self.weather_data = self.get_current_openweathermap_data(temperature_type)
+        self.weather_data = self.get_current_openweathermap_data(temperature_type, self.LocationType.LATITUDE_LONGITUDE)
+
 
     class PrecipitationType(Enum):
         NONE = 0
@@ -32,6 +35,10 @@ class WeatherAdvisor:
         LIGHT_RAIN = 4
         RAIN = 5
         HEAVY_RAIN = 6
+
+    class LocationType(Enum):
+        ZIP_CODE = 1
+        LATITUDE_LONGITUDE = 2
 
     precipitation_dict = {
         PrecipitationType.NONE: "none",
@@ -43,18 +50,17 @@ class WeatherAdvisor:
         PrecipitationType.HEAVY_RAIN: "heavily raining"
     }
 
-    def get_current_openweathermap_data(self, temperature_type: TemperatureType):
+    def get_current_openweathermap_data(self, temperature_type: TemperatureType, location_type: LocationType):
         # we could use self.temperature_type instead, but we want to get the current weather data in the init, and it's bad practice to use other init'd values to compute an init'd value
-        return requests.get(f"https://api.openweathermap.org/data/2.5/weather?zip={self.ZIP_CODE}&appid={self.OPENWEATHERMAP_API_KEY}&units={temperature_type_dict[temperature_type]['openweathermapName']}").json()
+        api_request_url = f"https://api.openweathermap.org/data/2.5/weather?appid={self.OPENWEATHERMAP_API_KEY}&units={temperature_type_dict[temperature_type]['openweathermapName']}"
+        if location_type == self.LocationType.ZIP_CODE:
+            api_request_url += f"&zip={self.LOCATION_ZIP_CODE}"
+        elif location_type == self.LocationType.LATITUDE_LONGITUDE:
+            api_request_url += f"&lat={self.LOCATION_LATITUDE}&lon={self.LOCATION_LONGITUDE}"
+        return requests.get(api_request_url).json()
 
     def get_temperature_advice(self):
         current_temperature = self.weather_data['main']['temp']
-
-        # convert current temperature to Fahrenheit or Celsius based on self.temperature_type
-        # if self.temperature_type == TemperatureType.Fahrenheit:
-        #     current_temperature = (current_temperature - 273.15) * 9/5 + 32
-        # elif self.temperature_type == TemperatureType.Celsius:
-        #     current_temperature = current_temperature - 273.15
 
         # compare current temperature to jacket_temperature and coat_temperature
         output_text = f"Current temperature is {current_temperature:.1f} {temperature_type_dict[self.temperature_type]['abbreviation']}. "
@@ -82,6 +88,7 @@ class WeatherAdvisor:
         elif current_precipitation_mode in [self.PrecipitationType.LIGHT_SNOW, self.PrecipitationType.LIGHT_RAIN]:
             output_text += "Consider wearing a rainjacket."
 
+        output_text += f" (Precipitation ID: {precipitation_id})"
         return output_text
     
     # determine precipitation mode based on precipitation id
