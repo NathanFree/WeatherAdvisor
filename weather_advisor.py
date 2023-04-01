@@ -8,11 +8,7 @@ class TemperatureType(Enum):
     CELSIUS = 2,
     KELVIN = 3,
 
-temperature_type_dict = {
-    TemperatureType.FAHRENHEIT: {"openweathermapName": "imperial", "abbreviation": "F"},
-    TemperatureType.CELSIUS: {"openweathermapName": "metric", "abbreviation": "C"},
-    TemperatureType.KELVIN: {"openweathermapName": "standard", "abbreviation": "K"},
-}
+openweathermap_name_by_temperature_type = {TemperatureType.FAHRENHEIT: "imperial", TemperatureType.CELSIUS: "metric", TemperatureType.KELVIN: "standard"}
 
 class WeatherAdvisor:
     def __init__(self, jacket_temperature: int, coat_temperature: int, temperature_type: TemperatureType):
@@ -41,7 +37,7 @@ class WeatherAdvisor:
         LATITUDE_LONGITUDE = 2
 
     precipitation_dict = {
-        PrecipitationType.NONE: "none",
+        PrecipitationType.NONE: "clear",
         PrecipitationType.LIGHT_SNOW: "lightly snowing",
         PrecipitationType.SNOW: "snowing",
         PrecipitationType.HEAVY_SNOW: "heavily snowing",
@@ -52,7 +48,7 @@ class WeatherAdvisor:
 
     def get_current_openweathermap_data(self, temperature_type: TemperatureType, location_type: LocationType):
         # we could use self.temperature_type instead, but we want to get the current weather data in the init, and it's bad practice to use other init'd values to compute an init'd value
-        api_request_url = f"https://api.openweathermap.org/data/2.5/weather?appid={self.OPENWEATHERMAP_API_KEY}&units={temperature_type_dict[temperature_type]['openweathermapName']}"
+        api_request_url = f"https://api.openweathermap.org/data/2.5/weather?appid={self.OPENWEATHERMAP_API_KEY}&units={openweathermap_name_by_temperature_type[temperature_type]}"
         if location_type == self.LocationType.ZIP_CODE:
             api_request_url += f"&zip={self.LOCATION_ZIP_CODE}"
         elif location_type == self.LocationType.LATITUDE_LONGITUDE:
@@ -63,7 +59,7 @@ class WeatherAdvisor:
         current_temperature = self.weather_data['main']['temp']
 
         # compare current temperature to jacket_temperature and coat_temperature
-        output_text = f"Current temperature is {current_temperature:.1f} {temperature_type_dict[self.temperature_type]['abbreviation']}. "
+        output_text = f"Temperature is {current_temperature:.1f} {TemperatureType(self.temperature_type).name}. "
 
         if current_temperature > self.jacket_temperature and current_temperature <= self.jacket_temperature + 5:
             output_text += "Consider wearing a jacket."
@@ -82,7 +78,7 @@ class WeatherAdvisor:
         current_precipitation_mode = self.determine_precipitation_type(precipitation_id)
 
         # generate output text based on current precipitation mode
-        output_text = f"Current precipitation: {self.precipitation_dict[current_precipitation_mode]}. "
+        output_text = f"Precipitation is {self.precipitation_dict[current_precipitation_mode]}. "
         if current_precipitation_mode in [self.PrecipitationType.SNOW, self.PrecipitationType.HEAVY_SNOW, self.PrecipitationType.RAIN, self.PrecipitationType.HEAVY_RAIN]:
             output_text += "Grab a rainjacket."
         elif current_precipitation_mode in [self.PrecipitationType.LIGHT_SNOW, self.PrecipitationType.LIGHT_RAIN]:
